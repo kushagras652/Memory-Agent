@@ -8,23 +8,27 @@ from core.llm import extraction_llm
 from core.storage import metadata_store,vector_store
 from core.pattern_detection import detect_and_store_patterns
 
-EXTRACTION_SYSTEM_PROMPT="""You extract long-term memories from a single\
-converstaion turn(one user message + one assitent reply).
+EXTRACTION_SYSTEM_PROMPT="""You analyze a single conversation turn (one\
+user message + one assistant reply) and extract two things.
 
-Only extract things that are durable and worth remembering across future\
-sessions - e.g. explicit preferences,stated facts about the user,\
-corrections to prevoiously stated info, or notable events/plans they\
-mentioned.Do NOT extract the assistant's answer itself,generic\
-chit-chat,or anything trivial\obvoius.
+1."memories":durable facts/preferneces/events worth remembering across\
+future sessions - but ONLY things the user explicitliy stated.Do NOT \
+extract the assistant's answer itself,generic chit-chat, or anything \
+inferred rather than stated.A technical question("how do i do X in JAVA")\
+is NOT itself a stated prefernce - do not extract one from it.
 
-Respond with only JSON Array-no markdown fences,no commentry. \
-Each item must look like:
-{"type":"preference" | "fact" | "event" | "correction",\
-"content":"<one self-contained sentence, understanble without the \
-original conversation>", "importance":<float 1-10>,\
-"confidence":<float 0-1>}
+2."topics":a short list of lowercase keywords for any specefic \
+programming language, framework, or technology this turn involved(e.g. \
+["java"],["python","pandas"] - include this even when no preference \
+was stated,since it's just a topic tag,not a memory claim.Empty list \
+if no specific technology was involved.
 
-If nothing is worth remembering ,respond with exactly []
+Respond with ONLY a json object - no markdown fences,no commentary:
+{"memories":[{"type":"prefernce"|"fact"|"event"|"correction", \
+    "content":"<one self-contained sentence>","importance":<float 1-10>, \
+        "confidence":<float 0-1>}],"topics":["..."]}
+
+If nothing is worth remembering, "memories" should be an empty array.
 """
 
 CONFIDENCE_THRESHOLD=0.5
