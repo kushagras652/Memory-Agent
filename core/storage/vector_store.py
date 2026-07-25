@@ -18,7 +18,7 @@ def get_store()->Chroma:
         _store=Chroma(
             collection_name="memories",
             embedding_function=get_embeddings(),
-            persist_directory=CHROMA_PERSIST_DIR
+            persist_directory=CHROMA_PERSIST_DIR,
         )
     return _store
 

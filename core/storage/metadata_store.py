@@ -1,6 +1,6 @@
 import sqlite3
 from contextlib import contextmanager
-from datetime import datetime,timezone
+from datetime import datetime,timezone,timedelta
 from pathlib import Path
 from typing import Optional
 
@@ -21,6 +21,16 @@ CREATE TABLE IF NOT EXISTS memories(
 
 CREATE INDEX IF NOT EXISTS idx_memories_user_id ON memories(user_id);
 CREATE INDEX IF NOT EXISTS idx_memories_status ON memories(status);
+
+
+CREATE TABLE IF MOT EXISTS interaction_tags(
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+user_id TEXT NOT NULL,
+topic TEXT NOT NULL,
+created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_tags_user_topic ON interaction_tags(user_id,topic);
 """
 
 
@@ -43,19 +53,25 @@ def init_db():
     with get_connection() as conn:
         conn.executescript(SCHEMA)
 
-def insert_memory(memory_id:str,user_id:str,type_:str,content:str,importance:float,)->None:
+        cols=[r[1] for r in conn.execute("PRAGMA table_info(memories)").fetchall()]
+        if "source" not in cols:
+            conn.execute(
+                "ALTER TABLE memories ADD COLUMN source TEXT NOT NULL DEFAULT 'explicit'"
+            )
+
+def insert_memory(memory_id:str,user_id:str,type_:str,content:str,importance:float,source:str ="explicit")->None:
     now=_now()
     with get_connection() as conn:
         conn.execute(
             """
         INSERT INTO memories
         (id,user_id,type,content,importance,status,created_at,last_accessed,access_count)
-        VALUES (?,?,?,?,?,'active',?,?,0)
+        VALUES (?,?,?,?,?,'active',?,?,?,0)
         """,
-        (memory_id,user_id,type_,content,importance,now,now)
+        (memory_id,user_id,type_,content,importance,source,now,now)
         )
 
-def get_memory(memory_id:str)->None:
+def get_memory(memory_id:str)->Optional[sqlite3.Row]:
     with get_connection() as conn:
         row=conn.execute(
             "SELECT * FROM memories WHERE id=?",(memory_id,)
@@ -86,3 +102,29 @@ def set_status(memory_id:str,status:str)->None:
         conn.execute(
             "UPDATE memories SET status = ? WHERE id = ?",(status,memory_id)
         )
+
+
+def log_topics(user_id:str,topics:list[str])->None:
+    if not topics :
+        return
+    
+    now=_now()
+    with get_connection() as conn:
+        conn.executemany(
+            "INSERT INTO interaction_tags (user_id,topic,created_at) VALUES (?,?,?)",
+            [(user_id,t.strip().lower(),now) for t in topics if t.strip()],
+        )
+
+
+def get_recent_topic_count(user_id:str,window_days:int)->dict[str,int]:
+    cutoff=(datetime.now(timezone.utc)- timedelta(days=window_days)).isoformat()
+    with get_connection() as conn:
+        rows=conn.execute(
+            """
+            SELECT topic,COUNT(*) as cnt FROM interaction_tags 
+            WHERE user_id=? AND created_at >= ?
+            GROUP BY topics
+            """,
+            (user_id,cutoff),
+        ).fetchall()
+        return {row['topic']: row['cnt'] for row in rows}
