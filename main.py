@@ -36,12 +36,20 @@ def chat_loop():
             history.pop()
             continue
 
+
+        if result.get('retrieved_context'):
+            print("   [memories recalled]")
+            for line in result['retrieved_context'].splitlines():
+                print(f"   {line}")
+
         ai_message=result['messages'][-1]
         history.append(ai_message)
         print(f"Agent: {ai_message.content}\n")
 
+
         for mem in result.get("last_extracted",[]):
-            print(f"[memory saved] ({mem['type']}) {mem['content']}")
+            tag="inferred from pattern" if mem.get('source')=='inferred' else "stated"
+            print(f"[memory saved -{tag}] ({mem['type']}) {mem['content']}")
         if result.get("last_extracted"):
             print()
 
