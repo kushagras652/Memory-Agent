@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS memories(
  status TEXT NOT NULL DEFAULT 'active',
  created_at TEXT NOT NULL,
  last_accessed TEXT NOT NULL,
+ last_decayed_at TEXT NOT NULL,
  access_count INTEGER NOT NULL DEFAULT 0
 );
 
@@ -23,7 +24,7 @@ CREATE INDEX IF NOT EXISTS idx_memories_user_id ON memories(user_id);
 CREATE INDEX IF NOT EXISTS idx_memories_status ON memories(status);
 
 
-CREATE TABLE IF MOT EXISTS interaction_tags(
+CREATE TABLE IF NOT EXISTS interaction_tags(
 id INTEGER PRIMARY KEY AUTOINCREMENT,
 user_id TEXT NOT NULL,
 topic TEXT NOT NULL,
@@ -58,6 +59,10 @@ def init_db():
             conn.execute(
                 "ALTER TABLE memories ADD COLUMN source TEXT NOT NULL DEFAULT 'explicit'"
             )
+        if "last_decayed_at" not in cols:
+            conn.execute(
+                f"ALTER TABLE memories ADD COLUMN last_decayed_at TEXT NOT NULL DEFAULT '{_now()}'"
+            )
 
 def insert_memory(memory_id:str,user_id:str,type_:str,content:str,importance:float,source:str ="explicit")->None:
     now=_now()
@@ -65,10 +70,10 @@ def insert_memory(memory_id:str,user_id:str,type_:str,content:str,importance:flo
         conn.execute(
             """
         INSERT INTO memories
-        (id,user_id,type,content,importance,status,created_at,last_accessed,access_count)
-        VALUES (?,?,?,?,?,'active',?,?,?,0)
+        (id,user_id,type,content,importance,source,status,created_at,last_accessed,last_decayed_at,access_count)
+        VALUES (?,?,?,?,?,?,'active',?,?,?,0)
         """,
-        (memory_id,user_id,type_,content,importance,source,now,now)
+        (memory_id,user_id,type_,content,importance,source,now,now,now)
         )
 
 def get_memory(memory_id:str)->Optional[sqlite3.Row]:
@@ -104,6 +109,23 @@ def set_status(memory_id:str,status:str)->None:
         )
 
 
+
+def update_importance(memory_id:str,importance:float,decayed_at:str)->None:
+    with get_connection() as conn:
+        conn.execute(
+            "UPDATE memories SET importance=?,last_decayed_at=? WHERE id=?",
+            (importance,decayed_at,memory_id)
+        )
+
+
+def delete_old_tags(retention_days:int)->int:
+    cutoff=(datetime.now(timezone.utc)- timedelta(days=retention_days)).isoformat()
+    with get_connection() as conn:
+        cursor=conn.execute(
+            "DELETE FROM interaction_tags WHERE created_at < ?",(cutoff,)
+        )
+        return cursor.rowcount
+
 def log_topics(user_id:str,topics:list[str])->None:
     if not topics :
         return
@@ -123,7 +145,7 @@ def get_recent_topic_count(user_id:str,window_days:int)->dict[str,int]:
             """
             SELECT topic,COUNT(*) as cnt FROM interaction_tags 
             WHERE user_id=? AND created_at >= ?
-            GROUP BY topics
+            GROUP BY topic
             """,
             (user_id,cutoff),
         ).fetchall()

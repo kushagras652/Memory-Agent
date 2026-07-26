@@ -6,7 +6,7 @@ TOPIC_THRESHOLD=3
 WINDOW_DAYS=7
 INFERRED_IMPORTANCE=5.0
 
-def _has_existing_prefernce(user_id:str,topic:str)->bool:
+def _has_existing_preference(user_id:str,topic:str)->bool:
     for row in metadata_store.list_memories(user_id,status='active'):
         if row['type']=="preference" and topic in row['content'].lower():
             return True
@@ -20,7 +20,7 @@ def detect_and_store_patterns(user_id:str)->list[dict]:
     for topic,count in counts.items():
         if count<TOPIC_THRESHOLD:
             continue
-        if _has_existing_prefernce(user_id,topic):
+        if _has_existing_preference(user_id,topic):
             continue
         content=(
             f"Frequently asks about {topic} ({count} times in  the last"
@@ -31,14 +31,14 @@ def detect_and_store_patterns(user_id:str)->list[dict]:
         metadata_store.insert_memory(
             memory_id=memory_id,
             user_id=user_id,
-            type="preference",
+            type_="preference",
             content=content,
-            importnace=INFERRED_IMPORTANCE,
-            source='infereed',
+            importance=INFERRED_IMPORTANCE,
+            source='inferred',
         )
         vector_store.add_memory(
             memory_id=memory_id,content=content,user_id=user_id,type_='preference'
         )
-        newly_created.append({"type":"prefernce","content":content,"source":"inferred"})
+        newly_created.append({"type":"preference","content":content,"source":"inferred"})
 
     return newly_created

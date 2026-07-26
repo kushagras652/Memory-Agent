@@ -5,7 +5,7 @@ from core.llm import chat_llm
 from core.retrieval import format_memories,retrieve_relevant_memories
 
 SYSTEM_PROMPT=(
-    "You are a helpful assistent with long-term memory of this user."
+    "You are a helpful assistant with long-term memory of this user."
     "If relevant memories are provided below, use them naturally to"
     "personalize your response - don't announce that you're recalling"
     "something, just act on it.If no memories are relevant to the"

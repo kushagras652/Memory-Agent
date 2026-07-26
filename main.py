@@ -3,12 +3,28 @@ import sys
 from langchain_core.messages import HumanMessage,SystemMessage
 from core.graph import SYSTEM_PROMPT,build_graph
 from core.storage import metadata_store
+from core.forgetting import run_forgetting_job
+from core.config import LAST_USER_FILE
+from pathlib import Path
+
+def _get_user_id()->str:
+    last_user_path=Path(LAST_USER_FILE)
+    last_user=last_user_path.read_text().strip() if last_user_path.exists() else None
+
+    prompt=f"User id (Enter for '{last_user}'):" if last_user else "User id (for this session):"
+    typed=input(prompt).strip()
+    user_id=typed or last_user or "default_user"
+
+    last_user_path.parent.mkdir(parents=True,exist_ok=True)
+    last_user_path.write_text(user_id)
+    return user_id
+
 
 def chat_loop():
     metadata_store.init_db()
     app=build_graph()
 
-    user_id=input("User id (for this session):").strip() or "default_user"
+    user_id=_get_user_id()
     history=[SystemMessage(content=SYSTEM_PROMPT)]
 
     print(f"\n Memory Agent- user id:{user_id}")
@@ -52,6 +68,13 @@ def chat_loop():
             print(f"[memory saved -{tag}] ({mem['type']}) {mem['content']}")
         if result.get("last_extracted"):
             print()
+
+
+        forgetting_result=run_forgetting_job(user_id)
+        if forgetting_result['expired']:
+            print(f" [forgetting] {forgetting_result['expired']} memory(ies) expired (importance decayed beyond threshold)")
+        for consolidated in forgetting_result['consolidated']:
+            print(f"  [forgetting] consolidated old memories -> ({consolidated['type']}) {consolidated['content']}")
 
 
 if __name__=="__main__":

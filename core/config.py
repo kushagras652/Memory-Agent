@@ -21,3 +21,4 @@ def _resolve(env_var:str,default:str)->str:
 
 CHROMA_PERSIST_DIR=_resolve("CHROMA_PERSIST_DIR","data/chroma")
 SQLITE_DB_PATH=_resolve("SQLITE_DB_PATH","data/memory.db")
+LAST_USER_FILE=_resolve("LAST_USER_FILE","data/.last_user_id")
