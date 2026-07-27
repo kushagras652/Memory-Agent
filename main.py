@@ -4,7 +4,7 @@ from langchain_core.messages import HumanMessage,SystemMessage
 from core.graph import SYSTEM_PROMPT,build_graph
 from core.storage import metadata_store
 from core.forgetting import run_forgetting_job
-from core.config import LAST_USER_FILE
+from core.config import LAST_USER_FILE,require_api_key
 from pathlib import Path
 
 def _get_user_id()->str:
@@ -21,6 +21,7 @@ def _get_user_id()->str:
 
 
 def chat_loop():
+    require_api_key()
     metadata_store.init_db()
     app=build_graph()
 

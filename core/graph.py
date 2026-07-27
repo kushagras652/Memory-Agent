@@ -12,6 +12,8 @@ SYSTEM_PROMPT=(
     "current message, ignore the memory section entirely."
 )
 
+MAX_RECENT_MESSAGES=20
+
 class AgentState(MessagesState):
     user_id:str
     last_extracted:list
@@ -29,9 +31,16 @@ def call_model(state:AgentState):
     retrieved_context=state.get("retrieved_context","")
     messages=state['messages']
 
+    sys_msgs=[m for m in messages if isinstance(m,SystemMessage)]
+    other_msgs=[m for m in messages if not isinstance(m,SystemMessage)]
+
+    if len(other_msgs) > MAX_RECENT_MESSAGES:
+        other_msgs=other_msgs[-MAX_RECENT_MESSAGES:]
+    
+
     if retrieved_context:
-        sys_msgs=[m for m in messages if isinstance(m,SystemMessage)]
-        other_msgs=[m for m in messages if not isinstance(m,SystemMessage)]
+        # sys_msgs=[m for m in messages if isinstance(m,SystemMessage)]
+        # other_msgs=[m for m in messages if not isinstance(m,SystemMessage)]
         memory_msg=SystemMessage(
             content=f"Relevant memories about this user:\n{retrieved_context}"
         )

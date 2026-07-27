@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Memory Agent</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Fraunces:opsz,wght@9..144,600&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/assets/styles.css" />
+  </head>
+  <body>
+    <section class="access-screen" id="access-screen" aria-labelledby="access-title">
+      <div class="access-card">
+        <a class="brand access-brand" href="/" aria-label="Memory Agent home"><span class="brand-mark">M</span><span>memory<span class="brand-dot">.</span></span></a>
+        <div class="access-copy"><p class="eyebrow">PERSONAL MEMORY SPACE</p><h1 id="access-title">Pick up where you left off.</h1><p>Enter your personal ID to access a chat and memory space that is kept separate from everyone else’s.</p></div>
+        <form id="access-form" class="access-form"><label for="access-user-id">Your user ID</label><div class="access-input"><span class="avatar">A</span><input id="access-user-id" autocomplete="username" maxlength="100" placeholder="e.g. alex_01" required /><button type="submit">Continue <span>→</span></button></div><p class="access-help">New here? Choose any unique ID to begin. No password is required.</p></form>
+      </div>
+      <div class="access-aside"><div class="access-orb">✦</div><blockquote>“A conversation that remembers the parts that matter.”</blockquote><p>Memory Agent keeps your useful context close, across every chat.</p></div>
+    </section>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <a class="brand" href="/" aria-label="Memory Agent home"><span class="brand-mark">M</span><span>memory<span class="brand-dot">.</span></span></a>
+        <button class="new-chat" id="new-chat"><span>+</span> New conversation</button>
+        <nav aria-label="Main navigation">
+          <a class="nav-item active" href="#chat"><span class="nav-icon">◌</span> Conversation</a>
+          <a class="nav-item" href="#memory"><span class="nav-icon">◇</span> Your memory</a>
+        </nav>
+        <div class="sidebar-bottom">
+          <div class="profile-label">Memory profile</div>
+          <label class="profile-picker"><span class="avatar" id="profile-avatar">A</span><input id="user-id" maxlength="100" aria-label="Memory profile name" readonly /></label>
+          <p class="profile-note">Your details stay separated by profile.</p>
+        </div>
+      </aside>
+
+      <main id="chat" class="chat-area">
+        <header class="topbar"><div><p class="eyebrow">PERSONAL CONTEXT</p><h1>Good to see you.</h1></div><div class="status"><span></span> Memory active</div></header>
+        <section class="conversation" id="conversation" aria-live="polite">
+          <div class="welcome" id="welcome"><div class="welcome-orb">✦</div><p class="eyebrow">YOUR LONG-TERM ASSISTANT</p><h2>What’s on your mind?</h2><p>I remember the useful things you share, so every conversation can start a little further along.</p><div class="suggestions"><button data-prompt="Help me plan my work for today.">Plan my day</button><button data-prompt="What should I focus on next?">Find my focus</button><button data-prompt="Help me think through an idea.">Explore an idea</button></div></div>
+        </section>
+        <form class="composer" id="chat-form"><textarea id="message" rows="1" placeholder="Message your memory agent…" aria-label="Message"></textarea><button id="send" type="submit" aria-label="Send message"><span>↑</span></button></form>
+        <p class="composer-hint">Enter to send <span>·</span> Shift + Enter for a new line</p>
+      </main>
+
+      <aside class="memory-panel" id="memory">
+        <div class="panel-heading"><div><p class="eyebrow">LIVE MEMORY</p><h2>Your context</h2></div><button class="refresh" id="refresh" aria-label="Refresh memories">↻</button></div>
+        <div class="stat-grid"><div class="stat"><strong id="memory-count">0</strong><span>Memories</span></div><div class="stat"><strong id="important-count">0</strong><span>High signal</span></div><div class="stat"><strong id="inferred-count">0</strong><span>Patterns</span></div></div>
+        <div class="memory-list-head"><span>REMEMBERED</span><span id="memory-state">Loading…</span></div>
+        <div class="memory-list" id="memory-list"></div>
+        <div class="panel-footer"><span class="pulse"></span><span>Memory evolves with you</span></div>
+      </aside>
+    </div>
+    <template id="memory-template"><article class="memory-card"><div class="memory-meta"><span class="memory-type"></span><span class="memory-source"></span></div><p></p><div class="importance"><span></span><small></small></div></article></template>
+    <script src="/assets/app.js"></script>
+  </body>
+</html>
