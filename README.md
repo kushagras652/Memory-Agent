@@ -1,221 +1,167 @@
-# 🧠 Memory Agent
+# Memory Agent
 
-A long-term memory assistant powered by **DeepSeek V4** and **LangGraph**. It remembers the useful things you share — preferences, facts, events — and personalizes every conversation using a hybrid retrieval system that combines vector similarity, recency, and importance scoring.
+Memory Agent is a conversational AI assistant that remembers useful context across chats. It stores explicit preferences, facts, events, and corrections; retrieves the most relevant details for each new question; and gradually decays or consolidates old memories.
 
----
+The project includes a browser interface with a user-ID access screen. Each user ID has an isolated memory space.
 
 ## Features
 
-- **Persistent Memory** — Stores durable facts, preferences, and events across sessions in SQLite + ChromaDB.
-- **Smart Retrieval** — Retrieves relevant memories using a weighted blend of *vector similarity*, *recency*, and *importance*.
-- **Automatic Forgetting** — Memories decay over time with a half-life of 14 days; low-importance memories expire automatically.
-- **Contradiction Resolution** — When you change your mind, the LLM detects contradictions and supersedes old memories.
-- **Pattern Inference** — Repeated topics (e.g., asking about Java 3+ times in a week) trigger an inferred preference memory.
-- **Consolidation** — Groups of related older memories are consolidated into a single summary.
-- **Multi-User** — Each user ID gets an isolated memory space. No passwords — just pick a unique ID.
-- **Beautiful Web UI** — Clean, modern interface with a chat panel and a live memory panel.
-- **CLI Mode** — Also works as a terminal chat via `main.py`.
+- Chat with a DeepSeek-powered assistant.
+- Enter a user ID to access a separate conversation and memory profile.
+- Extract durable memories from user messages only.
+- Recall relevant memories using semantic search, recency, and importance.
+- Detect recurring technical interests and save them as inferred preferences.
+- Mark contradictory memories as superseded.
+- Decay, expire, and consolidate old low-value memories.
+- View active memories and their importance directly in the web interface.
 
----
+## Tech stack
+
+- Python and FastAPI
+- LangGraph and LangChain
+- DeepSeek chat model
+- SQLite for memory metadata
+- ChromaDB and Sentence Transformers for vector search
+- Vanilla HTML, CSS, and JavaScript frontend
+
+## Project structure
+
+```text
+MemoryAgent/
+├── core/
+│   ├── extraction.py          # Extracts memories and conversation topics
+│   ├── forgetting.py          # Memory decay, expiry, consolidation, contradictions
+│   ├── graph.py               # LangGraph conversation workflow
+│   ├── pattern_detection.py   # Detects repeated topics
+│   ├── retrieval.py           # Scores and retrieves relevant memories
+│   └── storage/
+│       ├── metadata_store.py  # SQLite memory metadata
+│       └── vector_store.py    # Chroma vector storage
+├── frontend/
+│   ├── index.html             # Browser interface
+│   ├── styles.css             # Responsive UI styling
+│   └── app.js                 # Browser chat and memory interactions
+├── data/                      # Created at runtime; local databases and vectors
+├── tests/test_evaluation.py   # LLM evaluation scenarios
+├── main.py                    # Original terminal chat interface
+├── web_app.py                 # FastAPI server for the browser interface
+└── requirements.txt
+```
 
 ## Architecture
 
-```
-┌─────────────┐     ┌──────────────────────────────────┐
-│   Web UI    │────▶│           FastAPI                 │
-│ (HTML/JS)   │     │         web_app.py               │
-└─────────────┘     └──────────┬───────────────────────┘
-                               │
-                    ┌──────────▼───────────────────────┐
-                    │        LangGraph Agent            │
-                    │  retrieval → agent → extraction   │
-                    └──────────┬───────────────────────┘
-                               │
-               ┌───────────────┼───────────────┐
-               │               │               │
-        ┌──────▼──────┐ ┌──────▼──────┐ ┌──────▼──────┐
-        │  ChromaDB   │ │   SQLite    │ │  DeepSeek   │
-        │  (vectors)  │ │ (metadata)  │ │    LLM      │
-        └─────────────┘ └─────────────┘ └─────────────┘
-```
+```mermaid
+flowchart TB
+    User([User]) --> Access[User ID access screen]
+    Access --> UI[Browser chat interface<br/>HTML / CSS / JavaScript]
+    UI -->|HTTP requests| API[FastAPI<br/>web_app.py]
+    API --> Graph[LangGraph conversation workflow]
 
-### Pipeline (per message)
+    subgraph Workflow[Memory Agent workflow]
+        Graph --> Retrieve[Retrieve relevant memories]
+        Retrieve --> Respond[DeepSeek chat model]
+        Respond --> Extract[Extract explicit memories<br/>and topic tags]
+        Extract --> Patterns[Detect recurring topics]
+        Patterns --> Maintain[Decay, expire, consolidate<br/>and resolve contradictions]
+    end
 
-1. **Retrieval** — Find top-N relevant memories via vector search, scored by similarity + recency + importance.
-2. **Agent** — The LLM receives the user's message, system prompt, and any recalled memories as context.
-3. **Extraction** — The LLM analyzes the turn and extracts durable facts/preferences/events as structured JSON.
-4. **Forgetting** — After each turn, memories decay and low-importance ones expire. Patterns are detected and contradictions resolved.
+    Retrieve --> Vector[(ChromaDB<br/>semantic vectors)]
+    Retrieve --> Metadata[(SQLite<br/>memory metadata)]
+    Extract --> Vector
+    Extract --> Metadata
+    Patterns --> Metadata
+    Patterns --> Vector
+    Maintain --> Metadata
+    Maintain --> Vector
 
----
-
-## Project Structure
-
-```
-MemoryAgent/
-├── main.py                  # CLI chat loop
-├── web_app.py               # FastAPI web server
-├── requirements.txt         # Python dependencies
-├── .env                     # API key & config (create from template below)
-│
-├── core/
-│   ├── config.py            # Environment variables & paths
-│   ├── graph.py             # LangGraph agent definition
-│   ├── llm.py               # DeepSeek LLM setup
-│   ├── extraction.py        # Memory extraction from conversations
-│   ├── retrieval.py         # Hybrid memory retrieval (vector + recency + importance)
-│   ├── forgetting.py        # Decay, expiration, contradiction, consolidation
-│   ├── pattern_detection.py # Inferred preferences from repeated topics
-│   └── storage/
-│       ├── metadata_store.py  # SQLite CRUD for memory metadata
-│       └── vector_store.py    # ChromaDB vector operations
-│
-├── frontend/
-│   ├── index.html           # Web UI
-│   ├── app.js               # Frontend logic
-│   └── styles.css           # Styling
-│
-├── tests/
-│   └── test_evaluation.py   # End-to-end evaluation suite
-│
-└── data/                    # Auto-generated (SQLite DB + Chroma vectors)
+    Respond -->|reply, recalled context,<br/>saved-memory events| API
+    API --> UI
 ```
 
----
+Every memory record is associated with the supplied user ID. This lets the retrieval and storage layers keep one user’s context separate from another’s.
 
-## Getting Started
+## Setup
 
-### Prerequisites
+### 1. Create and activate a virtual environment
 
-- **Python 3.10+**
-- A **DeepSeek API key** — get one at [platform.deepseek.com](https://platform.deepseek.com)
+In PowerShell, from the project folder:
 
-### 1. Clone & Install
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+```
 
-```bash
-cd MemoryAgent
+### 2. Install dependencies
+
+```powershell
 pip install -r requirements.txt
 ```
 
-### 2. Set Up Environment
+### 3. Configure DeepSeek
 
-Create a `.env` file in the project root:
-
-```env
-DEEPSEEK_API_KEY="sk-your-api-key-here"
-DEEPSEEK_MODEL="deepseek-v4-flash"
-```
-
-Optional overrides:
+Create a `.env` file in the project root and add your key:
 
 ```env
-EMBEDDING_MODEL="sentence-transformers/all-MiniLM-L6-v2"
-CHROMA_PERSIST_DIR="data/chroma"
-SQLITE_DB_PATH="data/memory.db"
+DEEPSEEK_API_KEY=your_deepseek_api_key
 ```
 
-### 3. Choose Your Interface
+Optional configuration:
 
-**Web UI** (recommended):
-
-```bash
-python -m uvicorn web_app:app --host 127.0.0.1 --port 8000
+```env
+DEEPSEEK_MODEL=deepseek-v4-flash
+EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
 ```
 
-Then open **http://127.0.0.1:8000** in your browser.
+## Run the web app
 
-**CLI**:
+```powershell
+uvicorn web_app:app --reload
+```
 
-```bash
+Open [http://127.0.0.1:8000](http://127.0.0.1:8000) in your browser.
+
+On the first screen, enter a user ID such as `alex_01`. A new ID begins with no saved memories. Entering the same ID again loads that profile’s existing memories.
+
+## User IDs and privacy
+
+User IDs keep memory records separate in the local database, but they are not passwords. This is suitable for a local prototype or trusted environment only. It does not prevent someone who knows another user’s ID from viewing that profile’s memories.
+
+For a production deployment, add authenticated accounts, password hashing or OAuth, secure sessions, authorization checks, and a database-backed users table.
+
+## Run the terminal app
+
+The original command-line experience remains available:
+
+```powershell
 python main.py
 ```
 
----
+It asks for a user ID, then starts a chat session. Type `exit` or `quit` to stop.
 
-## How It Works
+## Run evaluations
 
-### Memory Lifecycle
+The evaluation suite makes real model calls, so it requires a valid API key and may incur provider costs.
 
-| Stage | What Happens |
-|-------|-------------|
-| **Extraction** | LLM extracts facts, preferences, events, and corrections from each conversation turn. Only explicit statements are captured (no hallucinated inferences). |
-| **Storage** | New memories are stored in both SQLite (metadata) and ChromaDB (embeddings). |
-| **Decay** | Every memory's importance decays exponentially (half-life: 14 days). |
-| **Expiration** | When importance drops below 1.0, the memory is marked as `expired`. |
-| **Contradiction** | When you state something that contradicts an earlier memory, the LLM detects it and marks the old one as `superseded`. |
-| **Consolidation** | Groups of 3+ related memories older than 14 days are consolidated into a summary. |
-| **Pattern Inference** | If you mention a topic (e.g., "Java") 3+ times in a week, an inferred preference is created. |
-
-### Retrieval Scoring
-
-Relevant memories are ranked by a weighted composite score:
-
-$S = 0.5 \times \text{similarity} + 0.2 \times \text{recency} + 0.3 \times \text{importance}$
-
----
-
-## API Endpoints
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/` | Serves the web UI |
-| `POST` | `/api/chat` | Send a message, get a reply + memory updates |
-| `GET` | `/api/memories/{user_id}` | List memories for a user |
-
-### Chat Request
-
-```json
-{
-  "message": "I prefer Python over JavaScript",
-  "user_id": "alex_01",
-  "history": []
-}
-```
-
-### Chat Response
-
-```json
-{
-  "reply": "Got it! I'll remember you prefer Python...",
-  "recalled": "User prefers Python for scripting (importance: 8.5)",
-  "saved": [{"type": "preference", "content": "Prefers Python over JavaScript"}],
-  "forgetting": {"expired": 1, "consolidated": []},
-  "summary": {"total": 5, "high_importance": 2, "inferred": 1, "last_updated": "..."},
-  "at": "2026-07-27T..."
-}
-```
-
----
-
-## Evaluation
-
-Run the automated evaluation suite to verify memory recall, contradiction resolution, and retrieval precision:
-
-```bash
+```powershell
 python tests/test_evaluation.py
 ```
 
-Scenarios tested:
-- **Explicit preference recall** — remembers stated language preference
-- **Implicit pattern recall** — infers preference from repeated questions
-- **Contradiction resolution** — supersedes old memories when corrected
-- **Retrieval precision** — doesn't recall irrelevant memories
+It checks explicit preference recall, inferred topic patterns, contradiction handling, and avoidance of unrelated memory recall.
 
----
+## How memory works
 
-## Tech Stack
+1. A user sends a message.
+2. The app searches that user’s vector memories for relevant context.
+3. It ranks matches using semantic similarity, recency, and importance.
+4. The assistant responds with relevant context available to it.
+5. The system extracts only durable facts explicitly stated by the user.
+6. New memories are saved to SQLite and ChromaDB.
+7. A maintenance job decays old memory importance, removes expired memories, consolidates eligible old memories, and removes stale topic tags.
 
-| Component | Technology |
-|-----------|-----------|
-| LLM | DeepSeek V4 (via `langchain-deepseek`) |
-| Agent Framework | LangGraph |
-| Vector Store | ChromaDB |
-| Embeddings | `sentence-transformers/all-MiniLM-L6-v2` |
-| Metadata Store | SQLite |
-| Web Framework | FastAPI + Uvicorn |
-| Frontend | Vanilla HTML/CSS/JS |
+## Local data
 
----
+Runtime data is stored under `data/` and is ignored by Git. This includes the SQLite database, ChromaDB embeddings, and the last terminal user ID. Delete this directory only if you intentionally want to erase all local memory data.
 
 ## License
 
-MIT
+No license has been specified for this project.
